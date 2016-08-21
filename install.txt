@@ -1,0 +1,117 @@
+Namestitev aplikacije Kadri in učenci
+
+Avtor: AL ELEKTONIK Aleš Drinovec s.p., Temniška ulica 5, SI-4202 Naklo, ales.drinovec@alelektronik-ad.si
+Datum kreiranja dokumenta: 21.8.2016
+
+1. 	Predvideva se, da se aplikacija namešča na novo namestitev Ubuntu 16.04 (LAMP in OpenSSH)
+	Priporoča se ureditev spletne poddomene kadri vaše šole: kadri."domena vaše šole".si
+	Ob namestitvi ste vnesli tudi root geslo do baze MySQL ali sorodne.
+	Imate sudo dostop. Stalen dostop si v času prijave lahko nastavite s:
+	
+	sudo -i
+
+2. 	Vsebino kadri.zip, mrbs.zip in graphviz.zip prenesite v spletno mapo (/var/www/html)
+
+3. 	Med vsebino je tudi mapa scripts, ki vsebuje namestitveno skripto.
+	Datoteki kadri_setup.sh dodelite izvršne lastnosti:
+	
+	chmod +x /var/www/html/scripts/kadri_setup.sh
+	
+	Podobno naredite še s skripto za varnostno shranjevanje podatkov:
+	
+	chmod +x /var/www/html/scripts/backup_kadri.sh
+	
+4.	Poženite skripto kadri_setup.sh:
+
+	/var/www/html/scripts/kadri_setup.sh
+	
+	Med potekom namestitvene skripte lahko nastavite uporabniško ime in geslo za delo s kadri. Predlagano je webkadri.
+	Skripta nastavi 
+	- chown in chmod za spletno mapo
+	- nastavi dostop do podatkovne baze
+	- nastavi dostop do aplikacije zasedenosti prostorov
+	- tvori šifrirne ključe in https dostop do spletnega strežnika
+	- namesti grafične in XML komponente za php7
+
+5. 	Naredite naslednje spremembe v php.ini (/etc/php5/apache2/php.ini ali /etc/php/7.0/apache2/php.ini):
+	max_execution_time = 300
+	max_input_vars = 50000
+	upload_max_filesize = 64M
+	max_file_uploads = 40
+
+6. 	V datoteki /etc/mysql/mysql.cnf  ali /etc/mysql/mysql.conf.d/mysqld.cnf dodajte vrstico v razdelku [mysqld]:
+    lower_case_table_names = 1
+	
+	Ponovno zaženite MySQL:
+	
+	service mysql restart
+
+7.	Odprite SSL config datoteko /etc/apache2/sites-available/default-ssl.conf
+    Naredite naslednje spremembe:
+    <VirtualHost *:443>
+    ServerName kadri.sola.si:443
+    
+    kadri.sola.si mora biti isto kot pri kreiranju certifikata ali IP naslov.
+    DirectoryIndex index.php index.html index.htm
+    
+    SSLEngine on
+    SSLCertificateFile /etc/apache2/ssl/apache.crt
+    SSLCertificateKeyFile /etc/apache2/ssl/apache.key
+    
+    Shranite datoteko in ponovno zaženite apache:
+	
+	service apache2 reload
+
+8. 	Spremenite crontab datoteko (/etc/crontab). Na koncu dodajte vrstici:
+	#backup kadri
+	25 1	* * *	root	/etc/cron.d/backup_kadri.sh > /home/$uporabnik/bk.log
+	
+	To pomeni, da se bo izvedlo avtomatsko backupiranje ob 1:25 uri.
+
+9.	Popravite datoteko /etc/cron.d/backup_kadri.sh tako, da bo vsebovala vaše prijavne podatke za MySQL:
+    
+	Primer za prednastavljene vrednosti (webkadri, kuser, kSQLgeslo, sola):
+	mysqldump -u kuser -h localhost -pkSQLgeslo sola | gzip -9 /home/webkadri/arhiv/$mysqlbaza-backup-$(date +%Y-%m-%d).sql.gz
+	
+10.	V primeru uporabe modula MRBS (koledar zasedenosti prostorov):
+	Potrebne so spremembe v nastavitveni datoteki /var/www/html/mrbs/config.inc.php, kjer so trije klicaji !!!:
+	
+	Primer za prednastavljene vrednosti (kuser,kSQLgeslo,sola):
+	db_login = kuser
+	db_password = kSQLgeslo
+	mrbs_admin_email = "vaš email"
+	mrbs_company = "Ime vaše šole"
+	url_base = "https://kadri.sola.si/mrbs"
+	auth['db_ext']['db_username'] = "kuser"
+	auth['db_ext']['db_password'] = "kSQLgeslo"
+	auth['db_ext']['db_name'] = "sola"
+	mail_settings['from'] = "vaš email"
+
+11.	Dodatno lahko namestite aplikacijo za risanje grafov (uporabno za sociogram):
+
+	cd /var/www/html/graphviz
+	dpkg -i *.deb
+	apt-get --yes --fix-broken install
+	
+12. Pobrišite nepotrebne mape in njihove vsebine:
+
+	rm /var/www/html/graphviz
+	rm /var/www/html/scripts
+	
+13.	Z drugim računalnikom se povežite na spletno stran:
+
+	https://kadri.sola.si
+	
+	Skrbniško uporabniško ime je admin, geslo: adminkadri
+	Ob prvi prijavi se pokaže obrazec za namestitev oz. vključitev osnovnih modulov.
+	Vpišete tudi e-poštne naslove (priporočam 4 Arnes projektne račune), ki so namenjeni razpošiljanju obvestil v okviru aplikacije.
+	Štirje naslovi se uporabljajo zaradi omejitev neželene pošte (500 sporočil na uro).
+	
+	Po poslanih nastavitvah se znajdete na prvi strani.
+	- spremenite admin geslo: sivi meni/Splošno/Spreminjanje gesla
+	- vnesite podatke o šoli: sivi meni/Administracija/Podatki o šoli
+	- vnesite vsaj en prostor (brez tega ne izpiše razredov!): sivi meni/Administracija/Prostori
+	- vnesite zaposlene s pogodbami: sivi meni/Delo/Kadri/Dodaj novega delavca
+	- uvozite učence iz CEUVIZ in ročno dopolnite podatke (starši, ...): sivi meni/Administracija/Uvou podatkov iz CEUVIZ (xml)
+	
+	
