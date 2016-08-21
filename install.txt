@@ -10,7 +10,7 @@ Datum kreiranja dokumenta: 21.8.2016
 	
 	sudo -i
 
-2. 	Vsebino kadri.zip, mrbs.zip in graphviz.zip prenesite v spletno mapo (/var/www/html)
+2. 	Vsebino kadri.zip, mrbs.zip in graphviz.zip odzipajte v spletno mapo (/var/www/html)
 
 3. 	Med vsebino je tudi mapa scripts, ki vsebuje namestitveno skripto.
 	Datoteki kadri_setup.sh dodelite izvršne lastnosti:
